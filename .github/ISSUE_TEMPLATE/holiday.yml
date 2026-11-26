@@ -1,0 +1,59 @@
+name: Suggest a holiday
+description: Add or correct a Nepal public or bank holiday.
+title: "Holiday: "
+labels: ["holiday-suggestion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One holiday per suggestion. For a festival of several days, suggest each day separately.
+        Please link the notice it comes from.
+  - type: input
+    id: date
+    attributes:
+      label: Date
+      description: Gregorian (AD) date, YYYY-MM-DD.
+      placeholder: "2026-10-21"
+    validations:
+      required: true
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      description: English name.
+      placeholder: Vijaya Dashami
+    validations:
+      required: true
+  - type: input
+    id: name_ne
+    attributes:
+      label: Name in Nepali
+      placeholder: विजया दशमी
+  - type: dropdown
+    id: banks_closed
+    attributes:
+      label: Banks closed
+      description: Are banks and payment settlement closed that day?
+      options:
+        - "yes"
+        - "no"
+    validations:
+      required: true
+  - type: input
+    id: applies_to
+    attributes:
+      label: Applies to
+      description: Leave blank if nationwide. Otherwise e.g. women only, Koshi Province, Kathmandu Valley.
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: Link to the notice (Ministry of Home Affairs, Nepal Rastra Bank, provincial government).
+      placeholder: https://
+    validations:
+      required: true
+  - type: textarea
+    id: note
+    attributes:
+      label: Note
+      description: Anything else, e.g. "election" or "replaces the earlier date".

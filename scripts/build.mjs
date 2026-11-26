@@ -3,45 +3,17 @@
 // Node does.
 import { mkdirSync, readFileSync, readdirSync, writeFileSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
+import { COLUMNS, REQUIRED, readRows, rowProblems } from "./csv.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
 const dataDir = join(root, "data");
 const siteDir = join(root, "site");
 const checkOnly = process.argv.includes("--check");
 
-const COLUMNS = ["date", "name", "name_ne", "banks_closed", "applies_to", "note"];
-const REQUIRED = ["date", "name", "banks_closed"];
 const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
 const errors = [];
 const fail = (where, message) => errors.push(`${where}: ${message}`);
-
-// RFC 4180-style CSV: quoted fields may hold commas, quotes ("") and newlines.
-function parseCSV(text) {
-  const rows = [];
-  let row = [], field = "", quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (quoted) {
-      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
-      else if (c === '"') quoted = false;
-      else field += c;
-    } else if (c === '"') quoted = true;
-    else if (c === ",") { row.push(field); field = ""; }
-    else if (c === "\n" || c === "\r") {
-      if (c === "\r" && text[i + 1] === "\n") i++;
-      row.push(field); rows.push(row); row = []; field = "";
-    } else field += c;
-  }
-  if (field !== "" || row.length) { row.push(field); rows.push(row); }
-  return rows.filter((r) => r.some((v) => v.trim() !== ""));
-}
-
-function realDate(s) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const d = new Date(`${s}T00:00:00Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
-}
 
 // meta.json: who publishes the list, and the weekly weekend banks keep.
 const metaPath = join(dataDir, "meta.json");
@@ -60,23 +32,20 @@ const years = [];
 for (const file of readdirSync(dataDir).filter((f) => /^\d{4}\.csv$/.test(f)).sort()) {
   const year = Number(file.slice(0, 4));
   const where = `data/${file}`;
-  const rows = parseCSV(readFileSync(join(dataDir, file), "utf8"));
-  if (rows.length === 0) { fail(where, "empty"); continue; }
-  const header = rows[0].map((h) => h.trim().toLowerCase());
+  const { header, records } = readRows(readFileSync(join(dataDir, file), "utf8"));
+  if (header.length === 0) { fail(where, "empty"); continue; }
   const unknown = header.filter((h) => !COLUMNS.includes(h));
   if (unknown.length) fail(where, `unknown columns: ${unknown.join(", ")}`);
   for (const col of REQUIRED) if (!header.includes(col)) fail(where, `missing column "${col}"`);
 
   const seen = new Map();
   const holidays = [];
-  rows.slice(1).forEach((cells, i) => {
+  records.forEach((r, i) => {
     const line = `${where}:${i + 2}`;
-    const r = Object.fromEntries(header.map((h, j) => [h, (cells[j] ?? "").trim()]));
-    if (!realDate(r.date)) return fail(line, `date "${r.date}" is not a real YYYY-MM-DD date`);
+    const problems = rowProblems(r);
+    problems.forEach((p) => fail(line, p));
+    if (problems.length) return;
     if (Number(r.date.slice(0, 4)) !== year) fail(line, `${r.date} is not in ${year}`);
-    if (!r.name) fail(line, "name is required");
-    const closed = r.banks_closed.toLowerCase();
-    if (closed !== "yes" && closed !== "no") fail(line, `banks_closed must be yes or no, not "${r.banks_closed}"`);
     // One row per day: a day with two occasions lists them in one name.
     if (seen.has(r.date)) fail(line, `${r.date} is already on line ${seen.get(r.date)}`);
     seen.set(r.date, i + 2);
@@ -84,8 +53,9 @@ for (const file of readdirSync(dataDir).filter((f) => /^\d{4}\.csv$/.test(f)).so
       date: r.date,
       name: r.name,
       ...(r.name_ne ? { nameNe: r.name_ne } : {}),
-      banksClosed: closed === "yes",
+      banksClosed: r.banks_closed.toLowerCase() === "yes",
       ...(r.applies_to ? { appliesTo: r.applies_to } : {}),
+      ...(r.source ? { source: r.source } : {}),
       ...(r.note ? { note: r.note } : {}),
     });
   });
@@ -112,5 +82,6 @@ writeFileSync(
   JSON.stringify({ ...common, years: years.map((y) => y.year), updated: new Date().toISOString() }, null, 2) + "\n",
 );
 copyFileSync(join(root, "schema", "holiday-year.schema.json"), join(siteDir, "holiday-year.schema.json"));
+copyFileSync(join(root, "site-src", "index.html"), join(siteDir, "index.html"));
 writeFileSync(join(siteDir, ".nojekyll"), "");
 console.log(`wrote ${siteDir}`);

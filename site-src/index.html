@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nepal Holidays</title>
+<meta name="description" content="Nepal public and bank holidays, as JSON. Suggest a holiday or a correction.">
+<style>
+  :root {
+    --bg: #f7f5fa; --surface: #ffffff; --text: #221f2e; --muted: #625d72; --line: #e4dfeb;
+    --accent: #61428e; --accent-text: #ffffff; --closed: #b3261e; --open: #2e7d4f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131118; --surface: #1c1a23; --text: #ece9f3; --muted: #a39db3; --line: #2e2a38;
+      --accent: #b79ae6; --accent-text: #131118; --closed: #f2b8b5; --open: #8fd6a8;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 32px 0 12px; }
+  p.lead { color: var(--muted); margin: 0 0 24px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  select, input, textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
+  select { width: auto; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  button, .button { font: inherit; font-weight: 600; background: var(--accent); color: var(--accent-text); border: 0; border-radius: 8px; padding: 9px 16px; cursor: pointer; text-decoration: none; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  td.date { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .ne { color: var(--muted); display: block; }
+  .tag { font-size: 12px; font-weight: 600; }
+  .tag.closed { color: var(--closed); }
+  .tag.open { color: var(--open); }
+  .muted { color: var(--muted); font-size: 13px; }
+  a { color: var(--accent); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid .full { grid-column: 1 / -1; }
+  @media (max-width: 640px) {
+    .grid { grid-template-columns: 1fr; }
+    th.applies, td.applies { display: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Nepal holidays</h1>
+  <p class="lead">Public and bank holidays in Nepal, as <a href="holidays/index.json">JSON</a>.
+    Dates are Gregorian. Anyone can suggest a holiday or a correction; Tulasa reviews each one against the official notice before it is published.</p>
+
+  <section class="card">
+    <div class="bar">
+      <div>
+        <label for="year">Year</label>
+        <select id="year"></select>
+      </div>
+      <span class="muted" id="meta"></span>
+    </div>
+    <table>
+      <thead><tr><th>Date</th><th>Holiday</th><th class="applies">Applies to</th><th>Banks</th><th></th></tr></thead>
+      <tbody id="rows"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody>
+    </table>
+  </section>
+
+  <h2 id="suggest">Suggest a holiday</h2>
+  <form class="card grid" id="form">
+    <div><label for="f-date">Date</label><input id="f-date" type="date" required></div>
+    <div><label for="f-banks">Banks closed</label>
+      <select id="f-banks" style="width:100%"><option value="yes">Yes</option><option value="no">No</option></select></div>
+    <div><label for="f-name">Name</label><input id="f-name" required maxlength="100" placeholder="Vijaya Dashami"></div>
+    <div><label for="f-name-ne">Name in Nepali</label><input id="f-name-ne" maxlength="100" placeholder="विजया दशमी"></div>
+    <div><label for="f-applies">Applies to (blank if nationwide)</label><input id="f-applies" maxlength="100" placeholder="women only, Koshi Province…"></div>
+    <div><label for="f-source">Source (link to the notice)</label><input id="f-source" type="url" required placeholder="https://"></div>
+    <div class="full"><label for="f-note">Note</label><input id="f-note" maxlength="300"></div>
+    <div class="full">
+      <button type="submit">Continue on GitHub</button>
+      <span class="muted">You'll review and submit it as a GitHub issue (a GitHub account is needed).</span>
+    </div>
+  </form>
+</main>
+<script>
+  const REPO = "https://github.com/tulasatech/nepal-holidays";
+  const rows = document.getElementById("rows");
+  const yearSelect = document.getElementById("year");
+  const meta = document.getElementById("meta");
+
+  function suggestionURL(fields) {
+    const params = new URLSearchParams({ template: "holiday.yml", title: `Holiday: ${fields.date} ${fields.name}`.trim() });
+    for (const [key, value] of Object.entries(fields)) if (value) params.set(key, value);
+    return `${REPO}/issues/new?${params}`;
+  }
+
+  function cell(text, className) {
+    const td = document.createElement("td");
+    if (className) td.className = className;
+    if (text !== undefined) td.textContent = text;
+    return td;
+  }
+
+  function render(data) {
+    rows.replaceChildren();
+    const weekend = data.weekend.map((d) => d[0].toUpperCase() + d.slice(1)).join(" and ");
+    meta.textContent = `Weekly closure: ${weekend || "not set"}`;
+    if (!data.holidays.length) {
+      const tr = document.createElement("tr");
+      tr.append(cell("No holidays listed yet.", "muted"));
+      tr.firstChild.colSpan = 5;
+      rows.append(tr);
+      return;
+    }
+    for (const h of data.holidays) {
+      const tr = document.createElement("tr");
+      const day = new Date(h.date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+      tr.append(cell(day, "date"));
+      const name = cell();
+      name.append(document.createTextNode(h.name));
+      if (h.nameNe) { const ne = document.createElement("span"); ne.className = "ne"; ne.textContent = h.nameNe; name.append(ne); }
+      tr.append(name, cell(h.appliesTo || "Nationwide", "applies"));
+      const banks = cell(h.banksClosed ? "Closed" : "Open", `tag ${h.banksClosed ? "closed" : "open"}`);
+      tr.append(banks);
+      const fix = cell();
+      const link = document.createElement("a");
+      link.textContent = "Suggest a correction";
+      link.href = suggestionURL({ date: h.date, name: h.name, name_ne: h.nameNe, banks_closed: h.banksClosed ? "yes" : "no", applies_to: h.appliesTo, source: h.source });
+      link.target = "_blank";
+      link.rel = "noopener";
+      fix.append(link);
+      tr.append(fix);
+      rows.append(tr);
+    }
+  }
+
+  async function loadYear(year) {
+    rows.innerHTML = '<tr><td colspan="5" class="muted">Loading…</td></tr>';
+    const res = await fetch(`holidays/${year}.json`);
+    render(await res.json());
+  }
+
+  fetch("holidays/index.json").then((r) => r.json()).then((index) => {
+    const years = index.years.length ? index.years : [new Date().getFullYear()];
+    for (const y of years) yearSelect.append(new Option(String(y), String(y)));
+    const current = new Date().getFullYear();
+    yearSelect.value = String(years.includes(current) ? current : years[years.length - 1]);
+    yearSelect.onchange = () => loadYear(yearSelect.value);
+    if (index.years.length) loadYear(yearSelect.value);
+    else render({ weekend: index.weekend, holidays: [] });
+  }).catch(() => { rows.innerHTML = '<tr><td colspan="5" class="muted">The list could not be loaded.</td></tr>'; });
+
+  document.getElementById("form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const value = (id) => document.getElementById(id).value.trim();
+    window.open(suggestionURL({
+      date: value("f-date"), name: value("f-name"), name_ne: value("f-name-ne"), banks_closed: value("f-banks"),
+      applies_to: value("f-applies"), source: value("f-source"), note: value("f-note"),
+    }), "_blank", "noopener");
+  });
+</script>
+</body>
+</html>

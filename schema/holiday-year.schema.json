@@ -27,6 +27,7 @@
           "nameNe": { "type": "string" },
           "banksClosed": { "type": "boolean", "description": "Banks and payment settlement are closed." },
           "appliesTo": { "type": "string", "description": "Set when the holiday is not nationwide, e.g. women only or a province." },
+          "source": { "type": "string", "description": "Link to the notice this day comes from." },
           "note": { "type": "string" }
         },
         "additionalProperties": false

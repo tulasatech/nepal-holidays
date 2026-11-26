@@ -14,6 +14,7 @@ published list, one CSV per Gregorian year.
 | `/holidays/index.json` | Years available, the weekly weekend, the source, last update |
 | `/holidays/2026.json` | Every holiday in 2026 |
 | `/holiday-year.schema.json` | JSON Schema for a year file |
+| `/` | The list, with a form to suggest a holiday |
 
 ```json
 {
@@ -37,7 +38,35 @@ Fetch it at build time, or keep a bundled copy to fall back on: a holiday
 calendar should not depend on this site being up. Fields may be added, never
 renamed or removed.
 
-## Updating it
+## Suggesting a holiday
+
+Anyone can suggest a holiday or a correction from the site, which opens a
+pre-filled GitHub issue (a GitHub account is needed), or directly with the
+[issue form](https://github.com/tulasatech/nepal-holidays/issues/new?template=holiday.yml).
+Nothing is published until an admin approves it.
+
+## Approving suggestions (admins)
+
+Needs git and the GitHub CLI (`gh auth login`) with write access, run from the
+repo root on an up-to-date `main` with no local changes.
+
+```sh
+node scripts/holidays.mjs list                  # open suggestions, and whether each can be approved
+node scripts/holidays.mjs show 12               # one suggestion in full
+node scripts/holidays.mjs approve 12 15         # add these, commit, push, close the issues
+node scripts/holidays.mjs approve --all         # every open suggestion that passes the checks
+node scripts/holidays.mjs approve 12 --replace  # overwrite the day already listed
+node scripts/holidays.mjs approve 12 --no-push  # commit only, push yourself
+node scripts/holidays.mjs reject 13 --reason "Not in the notice"
+```
+
+Approval adds the day to `data/<year>.csv`, runs the same checks as the build,
+and refuses anything that fails them: an invalid date, a missing source, a day
+already listed (unless `--replace`), or two suggestions for the same day in one
+batch (approve one on its own). Check each suggestion's source before
+approving; the checks can't tell whether a holiday is real.
+
+## Editing the data directly
 
 1. Edit `data/<year>.csv` (see `data/TEMPLATE.csv.example`). One row per day;
    list every day of a multi-day festival.
@@ -49,6 +78,7 @@ renamed or removed.
    | `name_ne` | no | Nepali name |
    | `banks_closed` | yes | `yes` or `no` |
    | `applies_to` | no | e.g. `women only`, `Koshi Province`, `Kathmandu Valley` |
+   | `source` | no | Link to the notice |
    | `note` | no | e.g. `election`, `tentative` |
 
 2. Set the source notice and weekend in `data/meta.json`.

@@ -1,4 +1,4 @@
-date,name,name_ne,banks_closed,applies_to,note
-2026-04-14,Nepali New Year,नयाँ वर्ष,yes,,
-2026-09-14,Haritalika Teej,हरितालिका तीज,no,women only,
-2026-03-18,Ghode Jatra,घोडे जात्रा,no,Kathmandu Valley,
+date,name,name_ne,banks_closed,applies_to,source,note
+2026-04-14,Nepali New Year,नयाँ वर्ष,yes,,https://moha.gov.np/,
+2026-09-14,Haritalika Teej,हरितालिका तीज,no,women only,,
+2026-03-18,Ghode Jatra,घोडे जात्रा,no,Kathmandu Valley,,
