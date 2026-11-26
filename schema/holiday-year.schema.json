@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tulasatech.github.io/nepal-holidays/holiday-year.schema.json",
+  "title": "Nepal holidays for one Gregorian year",
+  "type": "object",
+  "required": ["country", "year", "weekend", "holidays"],
+  "properties": {
+    "country": { "const": "NP" },
+    "year": { "type": "integer" },
+    "source": {
+      "type": ["string", "null"],
+      "description": "The government notice the dates come from."
+    },
+    "weekend": {
+      "type": "array",
+      "description": "Weekdays banks are closed every week, lowercase English names.",
+      "items": { "enum": ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] }
+    },
+    "holidays": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["date", "name", "banksClosed"],
+        "properties": {
+          "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Gregorian date." },
+          "name": { "type": "string", "minLength": 1 },
+          "nameNe": { "type": "string" },
+          "banksClosed": { "type": "boolean", "description": "Banks and payment settlement are closed." },
+          "appliesTo": { "type": "string", "description": "Set when the holiday is not nationwide, e.g. women only or a province." },
+          "note": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
