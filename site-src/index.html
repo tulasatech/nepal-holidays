@@ -136,7 +136,8 @@
       name.append(document.createTextNode(h.name));
       if (h.nameNe) { const ne = document.createElement("span"); ne.className = "ne"; ne.textContent = h.nameNe; name.append(ne); }
       tr.append(name, cell(h.appliesTo || "Nationwide", "applies"));
-      const banks = cell(h.banksClosed ? "Closed" : "Open", `tag ${h.banksClosed ? "closed" : "open"}`);
+      const banksText = h.banksClosed ? (h.nrbUrgentServices ? "Closed · RTGS & ECC run" : "Closed") : "Open";
+      const banks = cell(banksText, `tag ${h.banksClosed ? "closed" : "open"}`);
       tr.append(banks);
       const fix = cell();
       const link = document.createElement("a");
