@@ -1,4 +1,4 @@
-// Builds the npm package date-fns-holiday-np in package/dist from the feed
+// Builds the npm package nepal-date-holidays in package/dist from the feed
 // that scripts/build.mjs has just validated and written to site/, so the
 // package and the published JSON always carry the same data.
 //
@@ -37,7 +37,7 @@ writeFileSync(join(dist, "data.js"), `// Generated from github.com/tulasatech/ne
 copyFileSync(join(root, "package", "README.md"), join(dist, "README.md"));
 copyFileSync(join(root, "LICENSE"), join(dist, "LICENSE"));
 writeFileSync(join(dist, "package.json"), JSON.stringify({
-  name: "date-fns-holiday-np",
+  name: "nepal-date-holidays",
   version,
   description: "Nepal public and bank holidays, in the shape of date-fns-holiday-us.",
   type: "module",
@@ -51,4 +51,4 @@ writeFileSync(join(dist, "package.json"), JSON.stringify({
   repository: { type: "git", url: "git+https://github.com/tulasatech/nepal-holidays.git" },
   homepage: "https://tulasatech.github.io/nepal-holidays/",
 }, null, 2) + "\n");
-console.log(`package/dist: date-fns-holiday-np@${version}, ${data.holidays.length} holidays (${data.years.join(", ")})`);
+console.log(`package/dist: nepal-date-holidays@${version}, ${data.holidays.length} holidays (${data.years.join(", ")})`);

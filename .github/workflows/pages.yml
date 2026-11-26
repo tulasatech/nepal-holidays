@@ -47,7 +47,7 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
 
-  # Releases date-fns-holiday-np to npm when the data or the package changes.
+  # Releases nepal-date-holidays to npm when the data or the package changes.
   npm:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: validate
@@ -77,7 +77,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::warning::NPM_TOKEN is not set; date-fns-holiday-np was not published."
+            echo "::warning::NPM_TOKEN is not set; nepal-date-holidays was not published."
             exit 0
           fi
           VERSION="1.$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}"

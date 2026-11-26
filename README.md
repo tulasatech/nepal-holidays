@@ -44,12 +44,12 @@ renamed or removed.
 
 ## In JavaScript
 
-The same data is on npm as [`date-fns-holiday-np`](package/README.md), in the
+The same data is on npm as [`nepal-date-holidays`](package/README.md), in the
 shape of `date-fns-holiday-us`, with helpers for banking days. A new version
 is released whenever the data changes.
 
 ```js
-import { isBankHoliday, isBankingDay, addBankingDays } from "date-fns-holiday-np";
+import { isBankHoliday, isBankingDay, addBankingDays } from "nepal-date-holidays";
 ```
 
 ## Reporting a problem

@@ -1,6 +1,6 @@
-# date-fns-holiday-np
+# nepal-date-holidays
 
-Nepal's public and bank holidays, in the shape of
+Nepal's public and bank holidays, with an API in the shape of
 [date-fns-holiday-us](https://www.npmjs.com/package/date-fns-holiday-us).
 
 Nepal's holidays follow the Bikram Sambat and lunar calendars and are set each
@@ -9,7 +9,7 @@ published list from [tulasatech/nepal-holidays](https://github.com/tulasatech/ne
 and a new version is released whenever the list changes.
 
 ```js
-import { getBankHolidays, isBankHoliday, isBankingDay, addBankingDays, getHoliday } from "date-fns-holiday-np";
+import { getBankHolidays, isBankHoliday, isBankingDay, addBankingDays, getHoliday } from "nepal-date-holidays";
 
 isBankHoliday(new Date(2026, 9, 21));      // true (Dashain)
 getHoliday(new Date(2026, 9, 21))?.name;   // "Dashain Holiday"
