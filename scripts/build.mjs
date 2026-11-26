@@ -79,7 +79,13 @@ for (const { year, holidays } of years) {
 }
 writeFileSync(
   join(siteDir, "holidays", "index.json"),
-  JSON.stringify({ ...common, years: years.map((y) => y.year), updated: new Date().toISOString() }, null, 2) + "\n",
+  JSON.stringify({
+    ...common,
+    years: years.map((y) => y.year),
+    updated: new Date().toISOString(),
+    // Every year's holidays in one list, so a single fetch has them all.
+    holidays: years.flatMap((y) => y.holidays),
+  }, null, 2) + "\n",
 );
 copyFileSync(join(root, "schema", "holiday-year.schema.json"), join(siteDir, "holiday-year.schema.json"));
 copyFileSync(join(root, "site-src", "index.html"), join(siteDir, "index.html"));

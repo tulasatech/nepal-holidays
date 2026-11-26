@@ -11,7 +11,7 @@ published list, one CSV per Gregorian year.
 
 | URL | What |
 | --- | --- |
-| `/holidays/index.json` | Years available, the weekly weekend, the source, last update |
+| `/holidays/index.json` | Every holiday across all years, plus the years available, weekly weekend, source and last update |
 | `/holidays/2026.json` | Every holiday in 2026 |
 | `/holiday-year.schema.json` | JSON Schema for a year file |
 | `/` | The list, with a form to report a problem |
