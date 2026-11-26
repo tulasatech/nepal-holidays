@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nepal Holidays</title>
-<meta name="description" content="Nepal public and bank holidays, as JSON. Suggest a holiday or a correction.">
+<meta name="description" content="Nepal public and bank holidays, as JSON. Report a missing holiday or a working day listed as a holiday.">
 <style>
   :root {
     --bg: #f7f5fa; --surface: #ffffff; --text: #221f2e; --muted: #625d72; --line: #e4dfeb;
@@ -40,6 +40,11 @@
   a { color: var(--accent); }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .grid .full { grid-column: 1 / -1; }
+  .kinds { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  .kinds legend { font-size: 13px; color: var(--muted); margin-bottom: 6px; padding: 0; }
+  .choice { display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-size: 15px; margin: 0; }
+  .choice input { width: auto; }
+  form[data-kind="working"] .missing-only { display: none; }
   @media (max-width: 640px) {
     .grid { grid-template-columns: 1fr; }
     th.applies, td.applies { display: none; }
@@ -50,7 +55,7 @@
 <main>
   <h1>Nepal holidays</h1>
   <p class="lead">Public and bank holidays in Nepal, as <a href="holidays/index.json">JSON</a>.
-    Dates are Gregorian. Anyone can suggest a holiday or a correction; Tulasa reviews each one against the official notice before it is published.</p>
+    Dates are Gregorian. If a holiday is missing, or a listed day is actually a working day, report it below; Tulasa checks each report against the official notice before changing the list.</p>
 
   <section class="card">
     <div class="bar">
@@ -66,14 +71,19 @@
     </table>
   </section>
 
-  <h2 id="suggest">Suggest a holiday</h2>
+  <h2 id="report">Report a problem with the list</h2>
   <form class="card grid" id="form">
+    <fieldset class="full kinds">
+      <legend>What's wrong?</legend>
+      <label class="choice"><input type="radio" name="kind" value="missing" checked> A holiday isn't listed</label>
+      <label class="choice"><input type="radio" name="kind" value="working"> A listed day is a working day</label>
+    </fieldset>
     <div><label for="f-date">Date</label><input id="f-date" type="date" required></div>
-    <div><label for="f-banks">Banks closed</label>
+    <div class="missing-only"><label for="f-banks">Banks closed</label>
       <select id="f-banks" style="width:100%"><option value="yes">Yes</option><option value="no">No</option></select></div>
-    <div><label for="f-name">Name</label><input id="f-name" required maxlength="100" placeholder="Vijaya Dashami"></div>
-    <div><label for="f-name-ne">Name in Nepali</label><input id="f-name-ne" maxlength="100" placeholder="विजया दशमी"></div>
-    <div><label for="f-applies">Applies to (blank if nationwide)</label><input id="f-applies" maxlength="100" placeholder="women only, Koshi Province…"></div>
+    <div class="missing-only"><label for="f-name">Name</label><input id="f-name" maxlength="100" placeholder="Vijaya Dashami"></div>
+    <div class="missing-only"><label for="f-name-ne">Name in Nepali</label><input id="f-name-ne" maxlength="100" placeholder="विजया दशमी"></div>
+    <div class="missing-only"><label for="f-applies">Applies to (blank if nationwide)</label><input id="f-applies" maxlength="100" placeholder="women only, Koshi Province…"></div>
     <div><label for="f-source">Source (link to the notice)</label><input id="f-source" type="url" required placeholder="https://"></div>
     <div class="full"><label for="f-note">Note</label><input id="f-note" maxlength="300"></div>
     <div class="full">
@@ -88,8 +98,14 @@
   const yearSelect = document.getElementById("year");
   const meta = document.getElementById("meta");
 
-  function suggestionURL(fields) {
-    const params = new URLSearchParams({ template: "holiday.yml", title: `Holiday: ${fields.date} ${fields.name}`.trim() });
+  const REPORTS = { missing: "A holiday is missing", working: "A listed holiday is a working day" };
+  const TITLES = { missing: "Missing holiday", working: "Working day" };
+
+  // The kind is in the title too: the CLI reads it from there when a link
+  // could not preset the form's dropdown.
+  function reportURL(kind, fields) {
+    const title = `${TITLES[kind]}: ${fields.date}${fields.name ? ` ${fields.name}` : ""}`;
+    const params = new URLSearchParams({ template: "holiday-report.yml", title, report: REPORTS[kind] });
     for (const [key, value] of Object.entries(fields)) if (value) params.set(key, value);
     return `${REPO}/issues/new?${params}`;
   }
@@ -124,8 +140,8 @@
       tr.append(banks);
       const fix = cell();
       const link = document.createElement("a");
-      link.textContent = "Suggest a correction";
-      link.href = suggestionURL({ date: h.date, name: h.name, name_ne: h.nameNe, banks_closed: h.banksClosed ? "yes" : "no", applies_to: h.appliesTo, source: h.source });
+      link.textContent = "Report as a working day";
+      link.href = reportURL("working", { date: h.date, name: h.name });
       link.target = "_blank";
       link.rel = "noopener";
       fix.append(link);
@@ -150,13 +166,23 @@
     else render({ weekend: index.weekend, holidays: [] });
   }).catch(() => { rows.innerHTML = '<tr><td colspan="5" class="muted">The list could not be loaded.</td></tr>'; });
 
-  document.getElementById("form").addEventListener("submit", (event) => {
+  const form = document.getElementById("form");
+  const kind = () => form.querySelector('input[name="kind"]:checked').value;
+  const syncKind = () => {
+    form.dataset.kind = kind();
+    document.getElementById("f-name").required = kind() === "missing";
+  };
+  form.addEventListener("change", syncKind);
+  syncKind();
+
+  form.addEventListener("submit", (event) => {
     event.preventDefault();
     const value = (id) => document.getElementById(id).value.trim();
-    window.open(suggestionURL({
-      date: value("f-date"), name: value("f-name"), name_ne: value("f-name-ne"), banks_closed: value("f-banks"),
-      applies_to: value("f-applies"), source: value("f-source"), note: value("f-note"),
-    }), "_blank", "noopener");
+    const fields = kind() === "working"
+      ? { date: value("f-date"), source: value("f-source"), note: value("f-note") }
+      : { date: value("f-date"), name: value("f-name"), name_ne: value("f-name-ne"), banks_closed: value("f-banks"),
+          applies_to: value("f-applies"), source: value("f-source"), note: value("f-note") };
+    window.open(reportURL(kind(), fields), "_blank", "noopener");
   });
 </script>
 </body>

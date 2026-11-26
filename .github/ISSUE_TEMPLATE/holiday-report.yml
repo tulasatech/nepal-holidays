@@ -1,13 +1,21 @@
-name: Suggest a holiday
-description: Add or correct a Nepal public or bank holiday.
-title: "Holiday: "
-labels: ["holiday-suggestion"]
+name: Report a problem with the holiday list
+description: A holiday that isn't listed, or a listed day that is a working day.
+title: "Report: "
+labels: ["holiday-report"]
 body:
   - type: markdown
     attributes:
       value: |
-        One holiday per suggestion. For a festival of several days, suggest each day separately.
-        Please link the notice it comes from.
+        One day per report. Please link the notice that shows it.
+  - type: dropdown
+    id: report
+    attributes:
+      label: Report
+      options:
+        - A holiday is missing
+        - A listed holiday is a working day
+    validations:
+      required: true
   - type: input
     id: date
     attributes:
@@ -20,10 +28,8 @@ body:
     id: name
     attributes:
       label: Name
-      description: English name.
+      description: For a missing holiday, its English name.
       placeholder: Vijaya Dashami
-    validations:
-      required: true
   - type: input
     id: name_ne
     attributes:
@@ -33,17 +39,15 @@ body:
     id: banks_closed
     attributes:
       label: Banks closed
-      description: Are banks and payment settlement closed that day?
+      description: For a missing holiday, are banks and payment settlement closed that day?
       options:
         - "yes"
         - "no"
-    validations:
-      required: true
   - type: input
     id: applies_to
     attributes:
       label: Applies to
-      description: Leave blank if nationwide. Otherwise e.g. women only, Koshi Province, Kathmandu Valley.
+      description: For a missing holiday, leave blank if nationwide. Otherwise e.g. women only, Koshi Province, Kathmandu Valley.
   - type: input
     id: source
     attributes:
@@ -56,4 +60,3 @@ body:
     id: note
     attributes:
       label: Note
-      description: Anything else, e.g. "election" or "replaces the earlier date".

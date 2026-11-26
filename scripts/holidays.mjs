@@ -1,25 +1,28 @@
 #!/usr/bin/env node
-// Admin CLI for holiday suggestions. Suggestions are GitHub issues labelled
-// holiday-suggestion, opened from the site or the issue form. Approving one
-// adds it to data/<year>.csv, commits, pushes, and closes the issue.
+// Admin CLI for reports on the holiday list. Reports are GitHub issues
+// labelled holiday-report: a holiday that is missing, or a listed day that is
+// a working day. Approving applies them to data/<year>.csv, commits, pushes,
+// and closes the issues.
 //
 //   node scripts/holidays.mjs list
 //   node scripts/holidays.mjs show 12
 //   node scripts/holidays.mjs approve 12 15 [--replace] [--no-push]
 //   node scripts/holidays.mjs approve --all [--replace] [--no-push]
-//   node scripts/holidays.mjs reject 13 --reason "No such holiday in the notice"
+//   node scripts/holidays.mjs reject 13 --reason "Not in the notice"
 //
 // Needs git and the GitHub CLI (gh), signed in with write access to the repo.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readRows, rowProblems, writeRows } from "./csv.mjs";
+import { readRows, realDate, rowProblems, writeRows } from "./csv.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
-const LABEL = "holiday-suggestion";
-const FIELDS = { Date: "date", Name: "name", "Name in Nepali": "name_ne", "Banks closed": "banks_closed", "Applies to": "applies_to", Source: "source", Note: "note" };
+const LABEL = "holiday-report";
+const MISSING = "missing";
+const WORKING = "working";
+const FIELDS = { Report: "report", Date: "date", Name: "name", "Name in Nepali": "name_ne", "Banks closed": "banks_closed", "Applies to": "applies_to", Source: "source", Note: "note" };
 
-const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts }).trim();
+const run = (cmd, args) => execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 const gh = (...args) => run("gh", args);
 const git = (...args) => run("git", args);
 
@@ -28,36 +31,37 @@ function die(message) {
   process.exit(1);
 }
 
-// Issue forms render each field as "### Label" followed by its value.
+// Issue forms render each field as "### Label" followed by its value. The
+// report kind also rides in the title, for links that can't preset the
+// dropdown.
 function parseIssue(issue) {
   const fields = {};
-  const sections = issue.body.split(/^### /m).slice(1);
-  for (const section of sections) {
+  for (const section of issue.body.split(/^### /m).slice(1)) {
     const [label, ...rest] = section.split("\n");
     const key = FIELDS[label.trim()];
     if (!key) continue;
     const value = rest.join(" ").replace(/\s+/g, " ").trim();
     fields[key] = value === "_No response_" ? "" : value;
   }
+  const report = `${fields.report ?? ""} ${issue.title}`.toLowerCase();
+  fields.kind = report.includes("working day") ? WORKING : report.includes("missing") ? MISSING : "";
   fields.banks_closed = (fields.banks_closed ?? "").toLowerCase();
   return fields;
 }
 
-function openSuggestions() {
+function openReports() {
   const issues = JSON.parse(gh("issue", "list", "--label", LABEL, "--state", "open", "--limit", "200", "--json", "number,title,body,author,createdAt"));
   return issues.map((issue) => ({ ...issue, fields: parseIssue(issue) }));
 }
 
-function getSuggestion(number) {
+function getReport(number) {
   const issue = JSON.parse(gh("issue", "view", String(number), "--json", "number,title,body,author,createdAt,state,labels"));
-  if (!issue.labels.some((l) => l.name === LABEL)) die(`#${number} is not a holiday suggestion`);
+  if (!issue.labels.some((l) => l.name === LABEL)) die(`#${number} is not a holiday report`);
   if (issue.state !== "OPEN") die(`#${number} is already closed`);
   return { ...issue, fields: parseIssue(issue) };
 }
 
-function yearFile(year) {
-  return join(root, "data", `${year}.csv`);
-}
+const yearFile = (year) => join(root, "data", `${year}.csv`);
 
 function existingRecords(year) {
   const file = yearFile(year);
@@ -65,42 +69,61 @@ function existingRecords(year) {
 }
 
 /** What approving would do, or why it can't. */
-function assess(s, { replace }) {
-  const problems = rowProblems(s.fields);
-  if (!s.fields.source) problems.push("source is required");
+function assess(r, { replace }) {
+  const f = r.fields;
+  const problems = [];
+  if (!f.source) problems.push("source is required");
+  else if (!/^https?:\/\/\S+$/.test(f.source)) problems.push("source must be an http(s) link");
+  if (!f.kind) problems.push("can't tell whether this reports a missing holiday or a working day");
+
+  if (f.kind === WORKING) {
+    if (!realDate(f.date ?? "")) problems.push(`date "${f.date ?? ""}" is not a real YYYY-MM-DD date`);
+    if (problems.length) return { ok: false, problems };
+    const listed = existingRecords(f.date.slice(0, 4)).find((h) => h.date === f.date);
+    if (!listed) return { ok: false, problems: [`${f.date} is not listed, so there is nothing to remove`] };
+    return { ok: true, year: f.date.slice(0, 4), removes: listed };
+  }
+
+  problems.push(...rowProblems(f));
   if (problems.length) return { ok: false, problems };
-  const year = s.fields.date.slice(0, 4);
-  const current = existingRecords(year).find((r) => r.date === s.fields.date);
-  if (current && !replace) return { ok: false, problems: [`${s.fields.date} is already listed as "${current.name}"; use --replace to overwrite it`] };
-  return { ok: true, year, replaces: current };
+  const year = f.date.slice(0, 4);
+  const listed = existingRecords(year).find((h) => h.date === f.date);
+  if (listed && !replace) return { ok: false, problems: [`${f.date} is already listed as "${listed.name}"; use --replace to overwrite it`] };
+  return { ok: true, year, replaces: listed };
 }
 
-function describe(s) {
-  const f = s.fields;
-  const bits = [f.date, f.name, f.name_ne && `(${f.name_ne})`, `banks ${f.banks_closed === "yes" ? "closed" : "open"}`, f.applies_to && `— ${f.applies_to}`].filter(Boolean);
-  return bits.join(" ");
+function describe(r) {
+  const f = r.fields;
+  if (f.kind === WORKING) return `${f.date} is a working day${f.name ? ` (listed as ${f.name})` : ""}`;
+  if (!f.kind) return `${f.date || "no date"}: unclear report "${r.title}"`;
+  const bits = [`${f.date} missing:`, f.name, f.name_ne && `(${f.name_ne})`, `banks ${f.banks_closed === "yes" ? "closed" : "open"}`, f.applies_to && `— ${f.applies_to}`];
+  return bits.filter(Boolean).join(" ");
+}
+
+function verdictLine(v) {
+  if (!v.ok) return `cannot approve: ${v.problems.join("; ")}`;
+  if (v.removes) return `ready: removes "${v.removes.name}"`;
+  return v.replaces ? `ready: replaces "${v.replaces.name}"` : "ready: adds it";
 }
 
 function list() {
-  const suggestions = openSuggestions();
-  if (!suggestions.length) return console.log("No open suggestions.");
+  const reports = openReports();
+  if (!reports.length) return console.log("No open reports.");
   const byDate = new Map();
-  for (const s of suggestions) byDate.set(s.fields.date, (byDate.get(s.fields.date) ?? 0) + 1);
-  for (const s of suggestions) {
-    const verdict = assess(s, { replace: false });
-    const clash = byDate.get(s.fields.date) > 1 ? "  [another open suggestion has this date]" : "";
-    console.log(`#${s.number}  ${describe(s)}  by @${s.author.login}${clash}`);
-    console.log(verdict.ok ? `      ready${verdict.replaces ? " (replaces an existing entry)" : ""}` : `      cannot approve: ${verdict.problems.join("; ")}`);
-    if (s.fields.source) console.log(`      source: ${s.fields.source}`);
+  for (const r of reports) byDate.set(r.fields.date, (byDate.get(r.fields.date) ?? 0) + 1);
+  for (const r of reports) {
+    const clash = byDate.get(r.fields.date) > 1 ? "  [another open report has this date]" : "";
+    console.log(`#${r.number}  ${describe(r)}  by @${r.author.login}${clash}`);
+    console.log(`      ${verdictLine(assess(r, { replace: false }))}`);
+    if (r.fields.source) console.log(`      source: ${r.fields.source}`);
   }
 }
 
 function show(number) {
-  const s = getSuggestion(number);
-  console.log(`#${s.number} by @${s.author.login} on ${s.createdAt.slice(0, 10)}`);
-  for (const [label, key] of Object.entries(FIELDS)) console.log(`  ${label.padEnd(15)} ${s.fields[key] || "—"}`);
-  const verdict = assess(s, { replace: false });
-  console.log(verdict.ok ? "  ready to approve" : `  cannot approve: ${verdict.problems.join("; ")}`);
+  const r = getReport(number);
+  console.log(`#${r.number} by @${r.author.login} on ${r.createdAt.slice(0, 10)}: ${r.title}`);
+  for (const [label, key] of Object.entries(FIELDS)) console.log(`  ${label.padEnd(15)} ${r.fields[key] || "—"}`);
+  console.log(`  ${verdictLine(assess(r, { replace: false }))}`);
 }
 
 function ensureCleanMain() {
@@ -111,36 +134,38 @@ function ensureCleanMain() {
 
 function approve(numbers, { all, replace, push }) {
   ensureCleanMain();
-  const suggestions = all ? openSuggestions() : numbers.map(getSuggestion);
-  if (!suggestions.length) return console.log("No open suggestions.");
+  const reports = all ? openReports() : numbers.map(getReport);
+  if (!reports.length) return console.log("No open reports.");
 
-  // Two suggestions for one date need a person to pick, so neither goes in.
+  // Two reports about one day need a person to decide, so neither is applied.
   const counts = new Map();
-  for (const s of suggestions) counts.set(s.fields.date, (counts.get(s.fields.date) ?? 0) + 1);
+  for (const r of reports) counts.set(r.fields.date, (counts.get(r.fields.date) ?? 0) + 1);
 
   const accepted = [];
-  for (const s of suggestions) {
-    if (counts.get(s.fields.date) > 1) {
-      console.log(`#${s.number} skipped: another suggestion in this batch has the same date; approve one of them on its own`);
+  for (const r of reports) {
+    if (counts.get(r.fields.date) > 1) {
+      console.log(`#${r.number} skipped: another report in this batch is about the same day; approve one of them on its own`);
       continue;
     }
-    const verdict = assess(s, { replace });
+    const verdict = assess(r, { replace });
     if (!verdict.ok) {
-      console.log(`#${s.number} skipped: ${verdict.problems.join("; ")}`);
+      console.log(`#${r.number} skipped: ${verdict.problems.join("; ")}`);
       continue;
     }
-    accepted.push({ ...s, year: verdict.year });
+    accepted.push({ ...r, year: verdict.year });
   }
   if (!accepted.length) die("Nothing to approve.");
 
-  const years = new Set(accepted.map((s) => s.year));
-  for (const year of years) {
-    const records = existingRecords(year);
-    for (const s of accepted.filter((a) => a.year === year)) {
-      const row = s.fields;
-      const at = records.findIndex((r) => r.date === row.date);
-      if (at >= 0) records[at] = row;
-      else records.push(row);
+  for (const year of new Set(accepted.map((r) => r.year))) {
+    let records = existingRecords(year);
+    for (const r of accepted.filter((a) => a.year === year)) {
+      if (r.fields.kind === WORKING) {
+        records = records.filter((h) => h.date !== r.fields.date);
+        continue;
+      }
+      const at = records.findIndex((h) => h.date === r.fields.date);
+      if (at >= 0) records[at] = r.fields;
+      else records.push(r.fields);
     }
     writeFileSync(yearFile(year), writeRows(records));
   }
@@ -151,23 +176,24 @@ function approve(numbers, { all, replace, push }) {
     die("The data did not pass validation; nothing was committed.");
   }
 
-  const refs = accepted.map((s) => `#${s.number}`).join(", ");
-  const summary = accepted.map((s) => `- ${describe(s)} (#${s.number}, ${s.fields.source})`).join("\n");
+  const refs = accepted.map((r) => `#${r.number}`).join(", ");
+  const summary = accepted.map((r) => `- ${describe(r)} (#${r.number}, ${r.fields.source})`).join("\n");
   git("add", "data");
-  git("commit", "--quiet", "-m", `Add holidays from suggestions ${refs}`, "-m", summary);
+  git("commit", "--quiet", "-m", `Apply holiday reports ${refs}`, "-m", summary);
   const sha = git("rev-parse", "HEAD");
   if (push) git("push", "--quiet");
   const repo = gh("repo", "view", "--json", "url", "--jq", ".url");
-  for (const s of accepted) {
-    gh("issue", "close", String(s.number), "--comment", `Added in ${repo}/commit/${sha}. Thank you!`);
+  for (const r of accepted) {
+    const what = r.fields.kind === WORKING ? "Removed" : "Added";
+    gh("issue", "close", String(r.number), "--comment", `${what} in ${repo}/commit/${sha}. Thank you!`);
   }
   console.log(`Approved ${refs}${push ? " and published" : " (committed; run git push to publish)"}.`);
 }
 
 function reject(number, reason) {
   if (!reason) die('Give a reason: --reason "..."');
-  getSuggestion(number);
-  gh("issue", "close", String(number), "--reason", "not planned", "--comment", `Not added: ${reason}`);
+  getReport(number);
+  gh("issue", "close", String(number), "--reason", "not planned", "--comment", `Not applied: ${reason}`);
   console.log(`Rejected #${number}.`);
 }
 
@@ -194,5 +220,5 @@ switch (command) {
     reject(numbers[0], reasonAt >= 0 ? rest[reasonAt + 1] : "");
     break;
   default:
-    console.log(readFileSync(new URL(import.meta.url), "utf8").split("\n").slice(1, 13).map((l) => l.replace(/^\/\/ ?/, "")).join("\n"));
+    console.log(readFileSync(new URL(import.meta.url), "utf8").split("\n").slice(1, 14).map((l) => l.replace(/^\/\/ ?/, "")).join("\n"));
 }

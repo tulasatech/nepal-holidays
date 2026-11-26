@@ -14,7 +14,7 @@ published list, one CSV per Gregorian year.
 | `/holidays/index.json` | Years available, the weekly weekend, the source, last update |
 | `/holidays/2026.json` | Every holiday in 2026 |
 | `/holiday-year.schema.json` | JSON Schema for a year file |
-| `/` | The list, with a form to suggest a holiday |
+| `/` | The list, with a form to report a problem |
 
 ```json
 {
@@ -38,33 +38,35 @@ Fetch it at build time, or keep a bundled copy to fall back on: a holiday
 calendar should not depend on this site being up. Fields may be added, never
 renamed or removed.
 
-## Suggesting a holiday
+## Reporting a problem
 
-Anyone can suggest a holiday or a correction from the site, which opens a
-pre-filled GitHub issue (a GitHub account is needed), or directly with the
-[issue form](https://github.com/tulasatech/nepal-holidays/issues/new?template=holiday.yml).
-Nothing is published until an admin approves it.
+If a holiday is missing, or a listed day is actually a working day, report it
+from the site (each listed day has a "Report as a working day" link), which
+opens a pre-filled GitHub issue (a GitHub account is needed), or directly with
+the [report form](https://github.com/tulasatech/nepal-holidays/issues/new?template=holiday-report.yml).
+Nothing changes until an admin approves the report.
 
-## Approving suggestions (admins)
+## Approving reports (admins)
 
 Needs git and the GitHub CLI (`gh auth login`) with write access, run from the
 repo root on an up-to-date `main` with no local changes.
 
 ```sh
-node scripts/holidays.mjs list                  # open suggestions, and whether each can be approved
-node scripts/holidays.mjs show 12               # one suggestion in full
-node scripts/holidays.mjs approve 12 15         # add these, commit, push, close the issues
-node scripts/holidays.mjs approve --all         # every open suggestion that passes the checks
+node scripts/holidays.mjs list                  # open reports, and what approving each would do
+node scripts/holidays.mjs show 12               # one report in full
+node scripts/holidays.mjs approve 12 15         # apply these, commit, push, close the issues
+node scripts/holidays.mjs approve --all         # every open report that passes the checks
 node scripts/holidays.mjs approve 12 --replace  # overwrite the day already listed
 node scripts/holidays.mjs approve 12 --no-push  # commit only, push yourself
 node scripts/holidays.mjs reject 13 --reason "Not in the notice"
 ```
 
-Approval adds the day to `data/<year>.csv`, runs the same checks as the build,
-and refuses anything that fails them: an invalid date, a missing source, a day
-already listed (unless `--replace`), or two suggestions for the same day in one
-batch (approve one on its own). Check each suggestion's source before
-approving; the checks can't tell whether a holiday is real.
+A missing-holiday report adds the day to `data/<year>.csv`; a working-day
+report removes it. Approval runs the same checks as the build and refuses
+anything that fails them: an invalid date, a missing source, a holiday already
+listed (unless `--replace`), a working day that isn't listed, or two reports
+about the same day in one batch (approve one on its own). Check each report's
+source before approving; the checks can't tell whether a holiday is real.
 
 ## Editing the data directly
 
