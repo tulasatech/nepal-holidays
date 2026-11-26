@@ -110,6 +110,9 @@
   const REPO = "https://github.com/tulasatech/nepal-holidays";
   const rows = document.getElementById("rows");
   const yearSelect = document.getElementById("year");
+  // Today in Nepal, as YYYY-MM-DD, whatever the visitor's own time zone.
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kathmandu" }).format(new Date());
+  const UPCOMING = "-upcoming";
   const meta = document.getElementById("meta");
 
   const REPORTS = { missing: "A holiday is missing", working: "A listed holiday is a working day" };
@@ -131,18 +134,19 @@
     return td;
   }
 
-  function render(data) {
+  function render(data, upcomingOnly = false) {
     rows.replaceChildren();
     const weekend = data.weekend.map((d) => d[0].toUpperCase() + d.slice(1)).join(" and ");
     meta.textContent = `Weekly closure: ${weekend || "not set"}`;
-    if (!data.holidays.length) {
+    const holidays = upcomingOnly ? data.holidays.filter((h) => h.date >= today) : data.holidays;
+    if (!holidays.length) {
       const tr = document.createElement("tr");
-      tr.append(cell("No holidays listed yet.", "muted"));
+      tr.append(cell(data.holidays.length ? "No holidays left this year." : "No holidays listed yet.", "muted"));
       tr.firstChild.colSpan = 5;
       rows.append(tr);
       return;
     }
-    for (const h of data.holidays) {
+    for (const h of holidays) {
       const tr = document.createElement("tr");
       const day = new Date(h.date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
       tr.append(cell(day, "date"));
@@ -220,17 +224,21 @@
     if (event.key === "Escape") closeMenu(true);
   });
 
-  async function loadYear(year) {
+  // "2026-upcoming" is this year from today onwards; a plain year is all of it.
+  async function loadYear(value) {
+    const upcomingOnly = value.endsWith(UPCOMING);
+    const year = value.replace(UPCOMING, "");
     rows.innerHTML = '<tr><td colspan="5" class="muted">Loading…</td></tr>';
     const res = await fetch(`holidays/${year}.json`);
-    render(await res.json());
+    render(await res.json(), upcomingOnly);
   }
 
   fetch("holidays/index.json").then((r) => r.json()).then((index) => {
     const years = index.years.length ? index.years : [new Date().getFullYear()];
+    const current = Number(today.slice(0, 4));
+    if (years.includes(current)) yearSelect.append(new Option(`${current} (Today onwards)`, `${current}${UPCOMING}`));
     for (const y of years) yearSelect.append(new Option(String(y), String(y)));
-    const current = new Date().getFullYear();
-    yearSelect.value = String(years.includes(current) ? current : years[years.length - 1]);
+    yearSelect.value = years.includes(current) ? `${current}${UPCOMING}` : String(years[years.length - 1]);
     yearSelect.onchange = () => loadYear(yearSelect.value);
     if (index.years.length) loadYear(yearSelect.value);
     else render({ weekend: index.weekend, holidays: [] });
