@@ -42,6 +42,16 @@ Fetch it at build time, or keep a bundled copy to fall back on: a holiday
 calendar should not depend on this site being up. Fields may be added, never
 renamed or removed.
 
+## In JavaScript
+
+The same data is on npm as [`date-fns-holiday-np`](package/README.md), in the
+shape of `date-fns-holiday-us`, with helpers for banking days. A new version
+is released whenever the data changes.
+
+```js
+import { isBankHoliday, isBankingDay, addBankingDays } from "date-fns-holiday-np";
+```
+
 ## Reporting a problem
 
 If a holiday is missing, or a listed day is actually a working day, report it

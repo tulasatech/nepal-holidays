@@ -18,6 +18,11 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/build.mjs --check
+      - name: Package builds and its tests pass
+        run: |
+          node scripts/build.mjs
+          node scripts/build-package.mjs
+          node --test package/test/index.test.js
 
   publish:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -41,3 +46,42 @@ jobs:
           path: site
       - id: deploy
         uses: actions/deploy-pages@v4
+
+  # Releases date-fns-holiday-np to npm when the data or the package changes.
+  npm:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: changed
+        run: |
+          if git diff --quiet HEAD~1 HEAD -- data package scripts/build-package.mjs; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.changed.outputs.release == 'true'
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Publish
+        if: steps.changed.outputs.release == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::warning::NPM_TOKEN is not set; date-fns-holiday-np was not published."
+            exit 0
+          fi
+          VERSION="1.$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}"
+          node scripts/build.mjs
+          node scripts/build-package.mjs "$VERSION"
+          cd package/dist
+          npm publish --provenance --access public
