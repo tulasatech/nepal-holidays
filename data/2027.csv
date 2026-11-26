@@ -1,12 +1,12 @@
-date,name,name_ne,banks_closed,nrb_urgent_services,applies_to,source,note
-2027-01-11,Prithvi Jayanti,,yes,yes,,,
-2027-01-15,Maghi Parwa / Maghe Sankranti,,yes,yes,,,
-2027-01-30,Martyrs' Day (Sahid Diwas),,yes,yes,,,
-2027-02-07,Sonam Lhosar,,yes,yes,,,
-2027-02-19,National Democracy Day,,yes,yes,,,
-2027-03-06,Mahashivaratri,,yes,yes,,,
-2027-03-08,International Women's Day,,yes,yes,,,
-2027-03-09,Gyalpo Lhosar,,yes,yes,,,
-2027-03-21,Phagu Purnima,,yes,no,56 hilly and mountainous districts,,
-2027-03-22,Phagu Purnima,,yes,no,Terai districts (see note),,"Jhapa, Morang, Sunsari, Saptari, Siraha, Udayapur, Dhanusha, Mahottari, Sarlahi, Rautahat, Bara, Parsa, Nawalparasi (Bardaghat Susta East), Nawalparasi (Bardaghat Susta West), Rupandehi, Kapilvastu, Dang, Banke, Bardiya, Kailali and Kanchanpur."
-2027-04-06,Ghode Jatra,,yes,yes,Kathmandu Valley,,
+date,name,name_ne,banks_closed,applies_to,source,note
+2027-01-11,Prithvi Jayanti,,yes,,,
+2027-01-15,Maghi Parwa / Maghe Sankranti,,yes,,,
+2027-01-30,Martyrs' Day (Sahid Diwas),,yes,,,
+2027-02-07,Sonam Lhosar,,yes,,,
+2027-02-19,National Democracy Day,,yes,,,
+2027-03-06,Mahashivaratri,,yes,,,
+2027-03-08,International Women's Day,,yes,,,
+2027-03-09,Gyalpo Lhosar,,yes,,,
+2027-03-21,Phagu Purnima,,yes,56 hilly and mountainous districts,,
+2027-03-22,Phagu Purnima,,yes,Terai districts (see note),,"Jhapa, Morang, Sunsari, Saptari, Siraha, Udayapur, Dhanusha, Mahottari, Sarlahi, Rautahat, Bara, Parsa, Nawalparasi (Bardaghat Susta East), Nawalparasi (Bardaghat Susta West), Rupandehi, Kapilvastu, Dang, Banke, Bardiya, Kailali and Kanchanpur."
+2027-04-06,Ghode Jatra,,yes,Kathmandu Valley,,

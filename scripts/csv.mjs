@@ -1,6 +1,6 @@
 // The one definition of a holiday row, shared by the build and the admin CLI.
 
-export const COLUMNS = ["date", "name", "name_ne", "banks_closed", "nrb_urgent_services", "applies_to", "source", "note"];
+export const COLUMNS = ["date", "name", "name_ne", "banks_closed", "applies_to", "source", "note"];
 export const REQUIRED = ["date", "name", "banks_closed"];
 
 // RFC 4180-style CSV: quoted fields may hold commas, quotes ("") and newlines.
@@ -59,8 +59,6 @@ export function rowProblems(r) {
   if (!r.name) problems.push("name is required");
   const closed = (r.banks_closed ?? "").toLowerCase();
   if (closed !== "yes" && closed !== "no") problems.push(`banks_closed must be yes or no, not "${r.banks_closed ?? ""}"`);
-  const urgent = (r.nrb_urgent_services ?? "").toLowerCase();
-  if (urgent !== "" && urgent !== "yes" && urgent !== "no") problems.push(`nrb_urgent_services must be yes, no or blank, not "${r.nrb_urgent_services}"`);
   for (const [field, max] of Object.entries(TEXT_LIMITS)) {
     const v = r[field] ?? "";
     if (v.length > max) problems.push(`${field} is longer than ${max} characters`);

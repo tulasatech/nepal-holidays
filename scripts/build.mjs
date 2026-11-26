@@ -54,7 +54,6 @@ for (const file of readdirSync(dataDir).filter((f) => /^\d{4}\.csv$/.test(f)).so
       name: r.name,
       ...(r.name_ne ? { nameNe: r.name_ne } : {}),
       banksClosed: r.banks_closed.toLowerCase() === "yes",
-      ...(r.nrb_urgent_services?.toLowerCase() === "yes" ? { nrbUrgentServices: true } : {}),
       ...(r.applies_to ? { appliesTo: r.applies_to } : {}),
       ...(r.source ? { source: r.source } : {}),
       ...(r.note ? { note: r.note } : {}),

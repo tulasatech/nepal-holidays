@@ -28,9 +28,7 @@ published list, one CSV per Gregorian year.
 }
 ```
 
-- `banksClosed` means banks are closed. `nrbUrgentServices: true` marks days
-  Nepal Rastra Bank still runs RTGS, ECC and urgent services during banking
-  hours, so settlement can continue; on closed days without it, it can't.
+- `banksClosed` means banks are closed and payments do not settle that day.
 - Days the government declares later (Eids, Bhoto Jatra and others marked ✓
   in the NRB notice) are added once their dates are announced.
 - Holidays for some employees only (women, a community, employees with
@@ -85,7 +83,6 @@ source before approving; the checks can't tell whether a holiday is real.
    | `name` | yes | English name |
    | `name_ne` | no | Nepali name |
    | `banks_closed` | yes | `yes` or `no` |
-   | `nrb_urgent_services` | no | `yes` when Nepal Rastra Bank still runs cash payment, ECC, RTGS and urgent services (❄ in its notice) |
    | `applies_to` | no | e.g. `women only`, `Koshi Province`, `Kathmandu Valley` |
    | `source` | no | Link to the notice |
    | `note` | no | e.g. `election`, `tentative` |
