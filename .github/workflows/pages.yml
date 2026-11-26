@@ -47,9 +47,11 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
 
-  # Releases nepal-date-holidays to npm when the data or the package changes.
+  # Releases nepal-date-holidays to npm when the data or the package changes,
+  # or when run by hand. npm trusts this workflow (Trusted Publishing), so no
+  # token is stored; id-token: write lets the job prove it is this workflow.
   npm:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: validate
     runs-on: ubuntu-latest
     permissions:
@@ -61,25 +63,20 @@ jobs:
           fetch-depth: 2
       - id: changed
         run: |
-          if git diff --quiet HEAD~1 HEAD -- data package scripts/build-package.mjs; then
-            echo "release=false" >> "$GITHUB_OUTPUT"
-          else
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || ! git diff --quiet HEAD~1 HEAD -- data package scripts/build-package.mjs; then
             echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/setup-node@v4
         if: steps.changed.outputs.release == 'true'
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
       - name: Publish
         if: steps.changed.outputs.release == 'true'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::warning::NPM_TOKEN is not set; nepal-date-holidays was not published."
-            exit 0
-          fi
+          npm install -g npm@latest
           VERSION="1.$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}"
           node scripts/build.mjs
           node scripts/build-package.mjs "$VERSION"
