@@ -33,9 +33,10 @@ published list, one CSV per Gregorian year.
   hours, so settlement can continue; on closed days without it, it can't.
 - Days the government declares later (Eids, Bhoto Jatra and others marked ✓
   in the NRB notice) are added once their dates are announced.
-- `banksClosed` is what payment and settlement timing should use. Holidays for
-  some people only (women only, a community, a province) are listed with
-  `appliesTo` and usually `banksClosed: false`.
+- Holidays for some employees only (women, a community, employees with
+  disabilities) have `appliesTo` and `banksClosed: false`. Holidays for an
+  area (Kathmandu Valley, listed districts) have `appliesTo` and
+  `banksClosed: true` for banks there.
 - `weekend` is the weekly closure; it is not repeated in `holidays`.
 - Dates are Gregorian (`YYYY-MM-DD`).
 
