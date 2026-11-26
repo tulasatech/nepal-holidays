@@ -45,6 +45,17 @@
   .choice { display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-size: 15px; margin: 0; }
   .choice input { width: auto; }
   form[data-kind="working"] .missing-only { display: none; }
+  td.more { width: 1%; text-align: right; }
+  .more-wrap { position: relative; display: inline-block; }
+  .more-button { background: none; color: var(--muted); padding: 4px 6px; border-radius: 6px; line-height: 0; }
+  .more-button:hover, .more-button[aria-expanded="true"] { background: var(--line); color: var(--text); }
+  .more-button svg { width: 20px; height: 20px; }
+  .menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 10; min-width: 140px; padding: 4px; text-align: left;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .12); }
+  .menu[hidden] { display: none; }
+  .menu a { display: block; padding: 8px 12px; border-radius: 6px; color: var(--text); text-decoration: none; white-space: nowrap; }
+  .menu a:hover, .menu a:focus-visible { background: var(--bg); outline: none; }
   @media (max-width: 640px) {
     .grid { grid-template-columns: 1fr; }
     th.applies, td.applies { display: none; }
@@ -66,7 +77,7 @@
       <span class="muted" id="meta"></span>
     </div>
     <table>
-      <thead><tr><th>Date</th><th>Holiday</th><th class="applies">Applies to</th><th>Banks</th><th></th></tr></thead>
+      <thead><tr><th>Date</th><th>Holiday</th><th class="applies">Applies to</th><th>Banks</th><th><span hidden>Actions</span></th></tr></thead>
       <tbody id="rows"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody>
     </table>
   </section>
@@ -138,17 +149,69 @@
       tr.append(name, cell(h.appliesTo || "Nationwide", "applies"));
       const banks = cell(h.banksClosed ? "Closed" : "Open", `tag ${h.banksClosed ? "closed" : "open"}`);
       tr.append(banks);
-      const fix = cell();
-      const link = document.createElement("a");
-      link.textContent = "Report as a working day";
-      link.href = reportURL("working", { date: h.date, name: h.name });
-      link.target = "_blank";
-      link.rel = "noopener";
-      fix.append(link);
-      tr.append(fix);
+      tr.append(moreMenu(h));
       rows.append(tr);
     }
   }
+
+  const DOTS = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
+  let openMenu = null;
+
+  function closeMenu(returnFocus) {
+    if (!openMenu) return;
+    openMenu.menu.hidden = true;
+    openMenu.button.setAttribute("aria-expanded", "false");
+    if (returnFocus) openMenu.button.focus();
+    openMenu = null;
+  }
+
+  // The row's ⋯ menu, like the dashboard's: Report opens a pre-filled report
+  // saying this listed day is actually a working day.
+  function moreMenu(h) {
+    const td = cell(undefined, "more");
+    const wrap = document.createElement("span");
+    wrap.className = "more-wrap";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "more-button";
+    button.innerHTML = DOTS;
+    button.setAttribute("aria-label", `More for ${h.name} on ${h.date}`);
+    button.setAttribute("aria-haspopup", "menu");
+    button.setAttribute("aria-expanded", "false");
+    const menu = document.createElement("div");
+    menu.className = "menu";
+    menu.setAttribute("role", "menu");
+    menu.hidden = true;
+    const report = document.createElement("a");
+    report.setAttribute("role", "menuitem");
+    report.textContent = "Report";
+    report.title = "Report this day as a working day";
+    report.href = reportURL("working", { date: h.date, name: h.name });
+    report.target = "_blank";
+    report.rel = "noopener";
+    report.addEventListener("click", () => closeMenu(false));
+    menu.append(report);
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const wasOpen = openMenu?.menu === menu;
+      closeMenu(false);
+      if (wasOpen) return;
+      menu.hidden = false;
+      button.setAttribute("aria-expanded", "true");
+      openMenu = { menu, button };
+      report.focus();
+    });
+    wrap.append(button, menu);
+    td.append(wrap);
+    return td;
+  }
+
+  document.addEventListener("click", (event) => {
+    if (openMenu && !openMenu.menu.contains(event.target)) closeMenu(false);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeMenu(true);
+  });
 
   async function loadYear(year) {
     rows.innerHTML = '<tr><td colspan="5" class="muted">Loading…</td></tr>';

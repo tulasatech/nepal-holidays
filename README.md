@@ -45,7 +45,7 @@ renamed or removed.
 ## Reporting a problem
 
 If a holiday is missing, or a listed day is actually a working day, report it
-from the site (each listed day has a "Report as a working day" link), which
+from the site (each listed day has a ⋯ menu with Report), which
 opens a pre-filled GitHub issue (a GitHub account is needed), or directly with
 the [report form](https://github.com/tulasatech/nepal-holidays/issues/new?template=holiday-report.yml).
 Nothing changes until an admin approves the report.
