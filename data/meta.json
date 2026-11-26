@@ -1,4 +1,7 @@
 {
   "source": null,
-  "weekend": ["saturday"]
+  "weekend": [
+    "saturday",
+    "sunday"
+  ]
 }
